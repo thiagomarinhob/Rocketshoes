@@ -1,6 +1,5 @@
-import React, { Component } from 'react';
-import { bindActionCreators } from 'redux'
-import { connect } from 'react-redux'
+import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux'
 import { MdShoppingCart } from 'react-icons/md'
 import { formatPrice } from '../../util/format'
 import api from '../../services/api';
@@ -9,31 +8,39 @@ import * as CartActions from '../../store/modules/cars/action';
 
 import { ProductList } from './styles';
 
-class Home extends Component {
-    state = {
-        products: [],
-    }
+export default function Home() {
+    const [products, setProducts] = useState([])
 
-    async componentDidMount() {
-        const response = await api.get('/products');
+    const amount = useSelector(state => state.cart.reduce((sumAmount, product) => {
+        sumAmount[product.id] = product.amount;
+
+        return sumAmount;
+    }, {}))
+
+    const dispatch = useDispatch();
+
+
+    useEffect(() => {
+        async function loadProduct(){
+            const response = await api.get('/products');
 
         const data = response.data.map(product => ({
             ...product,
             priceFormatted: formatPrice(product.price)
         }));
 
-        this.setState({ products: data });
-    }
+        setProducts(data);
 
-    handleAddProduct = id => {
-        const { addToCartRequest } = this.props;
+        }
 
-        addToCartRequest(id);
+        loadProduct();
+    },[])
+
+
+
+    function handleAddProduct(id) {
+        dispatch(CartActions.addToCartRequest(id));
     };
-
-    render() {
-        const { products } = this.state;
-        const { amount } = this.props;
 
         return (
             <ProductList>
@@ -45,7 +52,7 @@ class Home extends Component {
 
                         <button
                             type="button"
-                            onClick={() => this.handleAddProduct(product.id)}>
+                            onClick={() => handleAddProduct(product.id)}>
                         <div>
                             <MdShoppingCart size={16} color="#fff" /> {' '}
                             {amount[product.id] || 0}
@@ -59,17 +66,3 @@ class Home extends Component {
             </ProductList>
           );
     }
-}
-
-const mapStateToProps = state => ({
-  amount: state.cart.reduce((amount, product) => {
-      amount[product.id] = product.amount;
-
-      return amount;
-  }, {})
-});
-
-const mapDispatchToProps = dispatch =>
-  bindActionCreators(CartActions, dispatch);
-
-export default connect(mapStateToProps, mapDispatchToProps)(Home);
